@@ -278,7 +278,7 @@ try:
         epoch_start_time = time.time()
         train_loss = train(data_loader, data_loader.train)
         val_loss, mae,std_mae, rmse, rmse_states, pcc, pcc_states, r2, r2_states, var, var_states, peak_mae = evaluate(data_loader, data_loader.val)
-        print('Epoch {:3d}|time:{:5.2f}s|train_loss {:5.8f}|val_loss {:5.8f}'.format(epoch, (time.time() - epoch_start_time), train_loss, val_loss))
+        #print('Epoch {:3d}|time:{:5.2f}s|train_loss {:5.4f}|val_loss {:5.4f}'.format(epoch, (time.time() - epoch_start_time), train_loss, val_loss))
 
         # 如果启用日志记录，将指标写入TensorBoard
         if args.mylog:
@@ -304,9 +304,15 @@ try:
             model_path = '%s/%s.pt' % (args.save_dir, log_token) # 模型保存路径
             with open(model_path, 'wb') as f:
                 torch.save(model.state_dict(), f)    # 只保存模型参数  覆盖之前的最佳模型
-            print('Best validation epoch:',epoch, time.ctime());
             test_loss, mae,std_mae, rmse, rmse_states, pcc, pcc_states, r2, r2_states, var, var_states, peak_mae  = evaluate(data_loader, data_loader.test,tag='test')
-            print('TEST loss {:5.4f} MAE {:5.4f} std {:5.4f} RMSE {:5.4f} RMSEs {:5.4f} PCC {:5.4f} PCCs {:5.4f} R2 {:5.4f} R2s {:5.4f} Var {:5.4f} Vars {:5.4f} Peak {:5.4f}'.format( test_loss, mae, std_mae, rmse, rmse_states, pcc, pcc_states,r2, r2_states, var, var_states, peak_mae))
+            # 打印 Best validation epoch 的测试集结果. B_Epo: Best Epoch    T_Loss: Test Loss
+            print(f"B_Epo: {epoch:03d} | T_Loss: {test_loss:.3f} | " 
+                f"MAE/s: {mae:.0f}/{std_mae:.0f} | "
+                f"RMSE/s: {rmse:.0f}/{rmse_states:.0f} | "
+                f"PCC/s: {pcc:.3f}/{pcc_states:.3f} | "
+                f"R2/s: {r2:.3f}/{r2_states:.3f} | "
+                f"Var/s: {var:.3f}/{var_states:.3f} | "
+                f"Peak: {peak_mae:.0f}")
         else:
             bad_counter += 1
 
@@ -324,5 +330,10 @@ with open(model_path, 'rb') as f:
 test_loss, mae,std_mae, rmse, rmse_states, pcc, pcc_states, r2, r2_states, var, var_states, peak_mae  = evaluate(data_loader, data_loader.test,tag='test')
 print("*"*84)
 print('Final evaluation')
-print('TEST loss {:5.4f} MAE {:5.4f} std {:5.4f} RMSE {:5.4f} RMSEs {:5.4f} PCC {:5.4f} PCCs {:5.4f} R2 {:5.4f} R2s {:5.4f} Var {:5.4f} Vars {:5.4f} Peak {:5.4f}'.format( test_loss, mae, std_mae, rmse, rmse_states, pcc, pcc_states,r2, r2_states, var, var_states, peak_mae))
-           
+print(f"T_Loss: {test_loss:.3f} | "
+                f"MAE/s: {mae:.0f}/{std_mae:.0f} | "
+                f"RMSE/s: {rmse:.0f}/{rmse_states:.0f} | "
+                f"PCC/s: {pcc:.3f}/{pcc_states:.3f} | "
+                f"R2/s: {r2:.3f}/{r2_states:.3f} | "
+                f"Var/s: {var:.3f}/{var_states:.3f} | "
+                f"Peak: {peak_mae:.0f}")
