@@ -2,7 +2,6 @@ import os, random, argparse, time # 系统、随机数、命令行参数、时�
 import numpy as np
 from sklearn.metrics import mean_squared_error, mean_absolute_error,r2_score,explained_variance_score # 评估指标
 from math import sqrt
-import warnings
 from scipy.stats import pearsonr # 统计相关性计算
 from models import *
 from data import *
@@ -14,6 +13,8 @@ import logging # 日志记录
 #tensorboard --logdir=./tensorboard --port=6007   #启动tensorboard服务  端口6007  可以在浏览器中访问localhost:6007查看
 from tensorboardX import SummaryWriter  # 可视化工具   
 import shutil # 用于处理文件夹的整体复制、移动和递归删除
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)  #解决RNN层数为1的时候的warning问题
 
 logger = logging.getLogger(__name__)  # 获取当前模块的日志记录器  用于输出信息
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s') # 输出格式include timestamp
