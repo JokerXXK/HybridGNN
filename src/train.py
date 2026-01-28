@@ -37,17 +37,17 @@ ap.add_argument('--shuffle', action='store_true', default=False, help="not used,
 ap.add_argument('--train', type=float, default=.5, help="Training ratio (0, 1)")
 ap.add_argument('--val', type=float, default=.2, help="Validation ratio (0, 1)")
 ap.add_argument('--test', type=float, default=.3, help="Testing ratio (0, 1)")
-ap.add_argument('--model', default='cola_gnn', choices=['HybridGNN','cola_gnn','CNNRNN_Res','RNN','AR','ARMA','VAR','GAR','SelfAttnRNN','lstnet','stgcn','dcrnn'], help='')
+ap.add_argument('--model', default='HybridGNN', choices=['HybridGNN','cola_gnn','CNNRNN_Res','RNN','AR','ARMA','VAR','GAR','SelfAttnRNN','lstnet','stgcn','dcrnn'], help='')
 ap.add_argument('--rnn_model', default='RNN', choices=['LSTM','RNN','GRU'], help='')
 ap.add_argument('--mylog', action='store_false', default=True,  help='save tensorboad log')
 ap.add_argument('--cuda', action='store_true', default=True,  help='')
 ap.add_argument('--window', type=int, default=20, help='')
-ap.add_argument('--horizon', type=int, default=5, help='leadtime default 1')
+ap.add_argument('--horizon', type=int, default= 32, help='leadtime default 1')
 ap.add_argument('--save_dir', type=str,  default='save',help='dir path to save the final model')
 ap.add_argument('--gpu', type=int, default=0,  help='choose gpu 0-10')
 ap.add_argument('--lamda', type=float, default=0.01,  help='regularize params similarities of states')
 ap.add_argument('--bi', action='store_true', default=False,  help='bidirectional default false')
-ap.add_argument('--patience', type=int, default=80, help='patience default 100')
+ap.add_argument('--patience', type=int, default=100, help='patience default 100')
 ap.add_argument('--k', type=int, default=8,  help='kernels')
 
 ap.add_argument('--check_point', type=int, default=1, help="check point")   # not used
@@ -265,78 +265,79 @@ def train(data_loader, data):
         optimizer.step()  # 根据梯度更新模型权重
 
     return float(total_loss / n_samples)
- 
-bad_counter = 0  # bad_counter == args.patience -> early stop
-best_epoch = 0
-best_val = 1e+20;
-try:
-    print('begin training: ');
-    if not os.path.exists(args.save_dir):  # 创建save文件夹
-        os.makedirs(args.save_dir)
-    
-    for epoch in range(1, args.epochs+1):
-        epoch_start_time = time.time()
-        train_loss = train(data_loader, data_loader.train)
-        val_loss, mae,std_mae, rmse, rmse_states, pcc, pcc_states, r2, r2_states, var, var_states, peak_mae = evaluate(data_loader, data_loader.val)
-        #print('Epoch {:3d}|time:{:5.2f}s|train_loss {:5.4f}|val_loss {:5.4f}'.format(epoch, (time.time() - epoch_start_time), train_loss, val_loss))
 
-        # 如果启用日志记录，将指标写入TensorBoard
-        if args.mylog:
-            # 添加各种指标到TensorBoard
-            writer.add_scalars('data/loss', {'train': train_loss}, epoch )
-            writer.add_scalars('data/loss', {'val': val_loss}, epoch)
-            writer.add_scalars('data/mae', {'val': mae}, epoch)
-            writer.add_scalars('data/rmse', {'val': rmse_states}, epoch)
-            writer.add_scalars('data/rmse_states', {'val': rmse_states}, epoch)
-            writer.add_scalars('data/pcc', {'val': pcc}, epoch)
-            writer.add_scalars('data/pcc_states', {'val': pcc_states}, epoch)
-            writer.add_scalars('data/R2', {'val': r2}, epoch)
-            writer.add_scalars('data/R2_states', {'val': r2_states}, epoch)
-            writer.add_scalars('data/var', {'val': var}, epoch)
-            writer.add_scalars('data/var_states', {'val': var_states}, epoch)
-            writer.add_scalars('data/peak_mae', {'val': peak_mae}, epoch)
-       
-        # Save the model if the validation loss is the best we've seen so far.
-        if val_loss < best_val:
-            best_val = val_loss
-            best_epoch = epoch
-            bad_counter = 0
-            model_path = '%s/%s.pt' % (args.save_dir, log_token) # 模型保存路径
-            with open(model_path, 'wb') as f:
-                torch.save(model.state_dict(), f)    # 只保存模型参数  覆盖之前的最佳模型
-            test_loss, mae,std_mae, rmse, rmse_states, pcc, pcc_states, r2, r2_states, var, var_states, peak_mae  = evaluate(data_loader, data_loader.test,tag='test')
-            # 打印 Best validation epoch 的测试集结果. B_Epo: Best Epoch    T_Loss: Test Loss
-            print(f"B_Epo: {epoch:03d} | T_Loss: {test_loss:.3f} | " 
-                f"MAE/s: {mae:.0f}/{std_mae:.0f} | "
-                f"RMSE/s: {rmse:.0f}/{rmse_states:.0f} | "
-                f"PCC/s: {pcc:.3f}/{pcc_states:.3f} | "
-                f"R2/s: {r2:.3f}/{r2_states:.3f} | "
-                f"Var/s: {var:.3f}/{var_states:.3f} | "
-                f"Peak: {peak_mae:.0f}")
-        else:
-            bad_counter += 1
+if __name__ == '__main__': 
+    bad_counter = 0  # bad_counter == args.patience -> early stop
+    best_epoch = 0
+    best_val = 1e+20;
+    try:
+        print('begin training: ');
+        if not os.path.exists(args.save_dir):  # 创建save文件夹
+            os.makedirs(args.save_dir)
+        
+        for epoch in range(1, args.epochs+1):
+            epoch_start_time = time.time()
+            train_loss = train(data_loader, data_loader.train)
+            val_loss, mae,std_mae, rmse, rmse_states, pcc, pcc_states, r2, r2_states, var, var_states, peak_mae = evaluate(data_loader, data_loader.val)
+            #print('Epoch {:3d}|time:{:5.2f}s|train_loss {:5.4f}|val_loss {:5.4f}'.format(epoch, (time.time() - epoch_start_time), train_loss, val_loss))
 
-        if bad_counter == args.patience:
-            break
+            # 如果启用日志记录，将指标写入TensorBoard
+            if args.mylog:
+                # 添加各种指标到TensorBoard
+                writer.add_scalars('data/loss', {'train': train_loss}, epoch )
+                writer.add_scalars('data/loss', {'val': val_loss}, epoch)
+                writer.add_scalars('data/mae', {'val': mae}, epoch)
+                writer.add_scalars('data/rmse', {'val': rmse_states}, epoch)
+                writer.add_scalars('data/rmse_states', {'val': rmse_states}, epoch)
+                writer.add_scalars('data/pcc', {'val': pcc}, epoch)
+                writer.add_scalars('data/pcc_states', {'val': pcc_states}, epoch)
+                writer.add_scalars('data/R2', {'val': r2}, epoch)
+                writer.add_scalars('data/R2_states', {'val': r2_states}, epoch)
+                writer.add_scalars('data/var', {'val': var}, epoch)
+                writer.add_scalars('data/var_states', {'val': var_states}, epoch)
+                writer.add_scalars('data/peak_mae', {'val': peak_mae}, epoch)
+        
+            # Save the model if the validation loss is the best we've seen so far.
+            if val_loss < best_val:
+                best_val = val_loss
+                best_epoch = epoch
+                bad_counter = 0
+                model_path = '%s/%s.pt' % (args.save_dir, log_token) # 模型保存路径
+                with open(model_path, 'wb') as f:
+                    torch.save(model.state_dict(), f)    # 只保存模型参数  覆盖之前的最佳模型
+                test_loss, mae,std_mae, rmse, rmse_states, pcc, pcc_states, r2, r2_states, var, var_states, peak_mae  = evaluate(data_loader, data_loader.test,tag='test')
+                # 打印 Best validation epoch 的测试集结果. B_Epo: Best Epoch    T_Loss: Test Loss
+                print(f"B_Epo: {epoch:03d} | T_Loss: {test_loss:.3f} | " 
+                    f"MAE/s: {mae:.0f}/{std_mae:.0f} | "
+                    f"RMSE/s: {rmse:.0f}/{rmse_states:.0f} | "
+                    f"PCC/s: {pcc:.3f}/{pcc_states:.3f} | "
+                    f"R2/s: {r2:.3f}/{r2_states:.3f} | "
+                    f"Var/s: {var:.3f}/{var_states:.3f} | "
+                    f"Peak: {peak_mae:.0f}")
+            else:
+                bad_counter += 1
 
-except KeyboardInterrupt:   # 捕获键盘中断（Ctrl+C）以便优雅退出
-    print('-' * 89)
-    print('Exiting from training early, epoch',epoch)
+            if bad_counter == args.patience:
+                break
 
-# Load the best saved model.
-model_path = '%s/%s.pt' % (args.save_dir, log_token)
-with open(model_path, 'rb') as f:
-    model.load_state_dict(torch.load(f));   ## 加载模型参数
-test_loss, mae,std_mae, rmse, rmse_states, pcc, pcc_states, r2, r2_states, var, var_states, peak_mae  = evaluate(data_loader, data_loader.test,tag='test')
-print("*"*84)
-print('Final evaluation')
-print(f"T_Loss: {test_loss:.3f} | "
-                f"MAE/s: {mae:.0f}/{std_mae:.0f} | "
-                f"RMSE/s: {rmse:.0f}/{rmse_states:.0f} | "
-                f"PCC/s: {pcc:.3f}/{pcc_states:.3f} | "
-                f"R2/s: {r2:.3f}/{r2_states:.3f} | "
-                f"Var/s: {var:.3f}/{var_states:.3f} | "
-                f"Peak: {peak_mae:.0f}")
+    except KeyboardInterrupt:   # 捕获键盘中断（Ctrl+C）以便优雅退出
+        print('-' * 89)
+        print('Exiting from training early, epoch',epoch)
 
-# 批量运行不同预测步长的实验
-# 命令行cmd窗口中输入   for %h in (2 5) do python src/train.py --horizon %h
+    # Load the best saved model.
+    model_path = '%s/%s.pt' % (args.save_dir, log_token)
+    with open(model_path, 'rb') as f:
+        model.load_state_dict(torch.load(f));   ## 加载模型参数
+    test_loss, mae,std_mae, rmse, rmse_states, pcc, pcc_states, r2, r2_states, var, var_states, peak_mae  = evaluate(data_loader, data_loader.test,tag='test')
+    print("*"*84)
+    print('Final evaluation')
+    print(f"T_Loss: {test_loss:.3f} | "
+                    f"MAE/s: {mae:.0f}/{std_mae:.0f} | "
+                    f"RMSE/s: {rmse:.0f}/{rmse_states:.0f} | "
+                    f"PCC/s: {pcc:.3f}/{pcc_states:.3f} | "
+                    f"R2/s: {r2:.3f}/{r2_states:.3f} | "
+                    f"Var/s: {var:.3f}/{var_states:.3f} | "
+                    f"Peak: {peak_mae:.0f}")
+
+    # 批量运行不同预测步长的实验
+    # 命令行cmd窗口中输入   for %h in (2 5 8 11 14 17 20 23 26 29 32) do python src/train.py --horizon %h
